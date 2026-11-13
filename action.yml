@@ -1,0 +1,46 @@
+name: shipskit
+description: Turn a merged pull request into a short 3D skit and post it on the pull request.
+inputs:
+  claude-token:
+    description: Token from `claude setup-token` (your Claude subscription). No API key is used.
+    required: true
+  gemini-key:
+    description: Gemini API key for the voices. Without it, a macOS runner's built-in voices are used.
+    required: false
+  pr-url:
+    description: The pull request to film. Defaults to the one that triggered the workflow.
+    required: false
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+    - name: Install
+      shell: bash
+      run: |
+        npm install --global @anthropic-ai/claude-code
+        npm ci --ignore-scripts --prefix "$GITHUB_ACTION_PATH"
+    # The pull request reaches the shell only through the environment, never as part of a command.
+    - name: Make the video
+      shell: bash
+      env:
+        PR_URL: ${{ inputs.pr-url || github.event.pull_request.html_url }}
+        GH_TOKEN: ${{ github.token }}
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.claude-token }}
+        GEMINI_API_KEY: ${{ inputs.gemini-key }}
+      run: node "$GITHUB_ACTION_PATH/bin/shipskit.mjs" auto "$PR_URL" --out "$RUNNER_TEMP/shipskit/video.mp4"
+    - name: Upload the video
+      id: upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: shipskit-video
+        path: ${{ runner.temp }}/shipskit/video.mp4
+    - name: Comment on the pull request
+      shell: bash
+      env:
+        PR_URL: ${{ inputs.pr-url || github.event.pull_request.html_url }}
+        GH_TOKEN: ${{ github.token }}
+        VIDEO: ${{ steps.upload.outputs.artifact-url }}
+      run: |
+        gh pr comment "$PR_URL" --body "🎬 shipskit made a video of this pull request. Download it here: $VIDEO"

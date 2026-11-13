@@ -1,0 +1,33 @@
+{
+  "name": "shipskit",
+  "version": "0.1.0",
+  "description": "Turn a pull request into a short 3D skit: a developer and a robot act out what you shipped.",
+  "license": "MIT",
+  "repository": "github:Louayzouaoui1/shipskit",
+  "type": "module",
+  "bin": { "shipskit": "bin/shipskit.mjs" },
+  "files": ["bin", "lib", "src", "public", "skill", "action.yml", "remotion.config.ts", "tsconfig.json"],
+  "engines": { "node": "^20.19.0 || ^22.13.0 || >=24" },
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "check": "tsc && node --test",
+    "sounds": "node scripts/sounds.mjs"
+  },
+  "dependencies": {
+    "@react-three/fiber": "9.8.2",
+    "@remotion/cli": "4.0.543",
+    "@remotion/google-fonts": "4.0.543",
+    "@remotion/media": "4.0.543",
+    "@remotion/three": "4.0.543",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "remotion": "4.0.543",
+    "three": "0.187.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/three": "0.187.0",
+    "@types/web": "0.0.166",
+    "typescript": "5.9.3"
+  }
+}

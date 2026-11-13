@@ -1,0 +1,6 @@
+{
+  "devActs": ["talk", "panic", "shout", "point", "plead", "facepalm", "think", "shrug", "cheer", "relief", "despair", "look"],
+  "botActs": ["talk", "explain", "point", "type", "proud", "cheer", "think", "alarm", "off", "look"],
+  "screens": ["code", "diff", "crash", "warn", "pass"],
+  "sounds": ["ding", "alarm", "thud", "whoosh", "typing", "powerdown", "pop"]
+}
