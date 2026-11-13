@@ -46,7 +46,7 @@ on:
   pull_request_target:
     types: [closed]
 permissions:
-  contents: read
+  contents: write # the videos are kept on a release named shipskit-videos
   pull-requests: write
 jobs:
   video:
@@ -60,7 +60,8 @@ jobs:
           gemini-key: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-Each merged pull request then gets a comment with a link to its video. The action is new:
+Each merged pull request then gets a comment that plays the start of its video and links to
+the full one with sound. The action is new:
 if it fails on your runner, please open an issue with the log.
 
 The workflow never checks out or runs the pull request's code. It reads the title, description

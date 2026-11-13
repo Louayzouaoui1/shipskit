@@ -29,18 +29,29 @@ runs:
         GH_TOKEN: ${{ github.token }}
         CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.claude-token }}
         GEMINI_API_KEY: ${{ inputs.gemini-key }}
-      run: node "$GITHUB_ACTION_PATH/bin/shipskit.mjs" auto "$PR_URL" --out "$RUNNER_TEMP/shipskit/video.mp4"
-    - name: Upload the video
-      id: upload
-      uses: actions/upload-artifact@v4
-      with:
-        name: shipskit-video
-        path: ${{ runner.temp }}/shipskit/video.mp4
-    - name: Comment on the pull request
+      run: node "$GITHUB_ACTION_PATH/bin/shipskit.mjs" auto "$PR_URL" --out "$RUNNER_TEMP/shipskit/video.mp4" --gif "$RUNNER_TEMP/shipskit/preview.gif"
+    # GitHub has no API for attaching a video to a comment, so the files are kept on a release
+    # of the repository and the comment shows the preview, which plays by itself.
+    - name: Attach the video to the pull request
       shell: bash
       env:
         PR_URL: ${{ inputs.pr-url || github.event.pull_request.html_url }}
         GH_TOKEN: ${{ github.token }}
-        VIDEO: ${{ steps.upload.outputs.artifact-url }}
+        GH_REPO: ${{ github.repository }}
       run: |
-        gh pr comment "$PR_URL" --body "🎬 shipskit made a video of this pull request. Download it here: $VIDEO"
+        cd "$RUNNER_TEMP/shipskit"
+        pr="${PR_URL##*/}"
+        mv video.mp4 "pr-$pr.mp4"
+        mv preview.gif "pr-$pr.gif"
+        gh release view shipskit-videos >/dev/null 2>&1 ||
+          gh release create shipskit-videos --latest=false --title "shipskit videos" --notes "Videos of merged pull requests, made by shipskit."
+        gh release upload shipskit-videos "pr-$pr.mp4" "pr-$pr.gif" --clobber
+        base="https://github.com/$GH_REPO/releases/download/shipskit-videos"
+        {
+          echo "🎬 **shipskit** filmed this pull request."
+          echo
+          echo "[![The start of the video]($base/pr-$pr.gif)]($base/pr-$pr.mp4)"
+          echo
+          echo "[Watch the full video with sound]($base/pr-$pr.mp4)"
+        } > comment.md
+        gh pr comment "$PR_URL" --body-file comment.md

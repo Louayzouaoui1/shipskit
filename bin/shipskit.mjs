@@ -3,7 +3,7 @@
 //   shipskit brief <pr | commit | a..b | file>   what changed, as a brief for the script writer
 //   shipskit check <dir>                          check <dir>/episode.json
 //   shipskit voice <dir>                          record the lines
-//   shipskit render <dir> [--out file.mp4]        render the video
+//   shipskit render <dir> [--out file.mp4]        render the video (--gif file.gif adds a preview)
 //   shipskit make <dir> [--out file.mp4]          check, voice and render
 //   shipskit auto <pr | commit | a..b | file>     all of it: Claude Code writes the script
 import { execFileSync } from "node:child_process";
@@ -102,7 +102,7 @@ function writeScript(change) {
   throw new Error("Claude Code did not write a valid episode in 3 tries.");
 }
 
-function render(dir, out) {
+function render(dir, out, gif) {
   const episode = load(dir);
   const clipsFile = join(dir, "clips.json");
   const clips = existsSync(clipsFile) ? JSON.parse(readFileSync(clipsFile, "utf8")) : [];
@@ -117,17 +117,27 @@ function render(dir, out) {
   const require = createRequire(import.meta.url);
   const cliPackage = require.resolve("@remotion/cli/package.json");
   const cli = join(dirname(cliPackage), require(cliPackage).bin.remotion);
-  execFileSync(
-    process.execPath,
-    [cli, "render", "src/index.ts", "Episode", out, `--props=${props}`, `--public-dir=${join(dir, "public")}`, "--log=error"],
-    { cwd: PKG, stdio: "inherit" },
-  );
+  const remotion = (file, ...more) =>
+    execFileSync(
+      process.execPath,
+      [cli, "render", "src/index.ts", "Episode", file, `--props=${props}`, `--public-dir=${join(dir, "public")}`, "--log=error", ...more],
+      { cwd: PKG, stdio: "inherit" },
+    );
+  remotion(out);
   console.log(out);
+  if (gif) {
+    // A small silent preview of the first nine seconds, for places that show images but not video.
+    const end = Math.min(269, Math.floor(clips.reduce((sum, clip) => sum + clip.seconds, 0) * 30));
+    remotion(gif, "--codec=gif", "--every-nth-frame=3", "--scale=0.28", `--frames=0-${end}`);
+    console.log(gif);
+  }
 }
 
 const [command, target, ...rest] = process.argv.slice(2);
 const flag = rest.indexOf("--out");
 const asked = flag >= 0 && rest[flag + 1] ? resolve(rest[flag + 1]) : null;
+const gifFlag = rest.indexOf("--gif");
+const gif = gifFlag >= 0 && rest[gifFlag + 1] ? resolve(rest[gifFlag + 1]) : null;
 try {
   if (command === "brief") console.log(brief(target));
   else if (command === "auto") {
@@ -140,7 +150,7 @@ try {
     writeFileSync(join(dir, "episode.json"), JSON.stringify(episode, null, 2) + "\n");
     console.log(`script: ${episode.lines.length} lines in ${join(dir, "episode.json")}`);
     await voice(dir, episode);
-    render(dir, asked ?? join(dir, `${slug}.mp4`));
+    render(dir, asked ?? join(dir, `${slug}.mp4`), gif);
   } else if (!["check", "voice", "render", "make"].includes(command) || !target) {
     console.log("Usage: shipskit <brief|auto|check|voice|render|make> <target> [--out file.mp4]\nSee the README for the steps.");
     process.exitCode = command ? 1 : 0;
@@ -149,7 +159,7 @@ try {
     const episode = load(dir);
     if (command === "check") console.log(`ok: ${episode.lines.length} lines`);
     if (command === "voice" || command === "make") await voice(dir, episode);
-    if (command === "render" || command === "make") render(dir, asked ?? join(dir, `${basename(dir)}.mp4`));
+    if (command === "render" || command === "make") render(dir, asked ?? join(dir, `${basename(dir)}.mp4`), gif);
   }
 } catch (error) {
   console.error(`shipskit: ${error.message}`);
